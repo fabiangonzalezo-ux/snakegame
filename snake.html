@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Culebrita</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a, #1a0033, #000011);
+            color: #00ffff;
+            font-family: 'Orbitron', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 255, 0, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        h1 {
+            color: #00ffff;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: 900;
+            text-shadow: 
+                0 0 10px #00ffff,
+                0 0 20px #00ffff,
+                0 0 30px #00ffff;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; }
+            to { text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff; }
+        }
+
+        .game-container {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+            border: 2px solid #00ffff;
+            position: relative;
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #00ff00, #ffff00, #00ffff);
+            border-radius: 15px;
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+        }
+
+        @keyframes borderGlow {
+            0% { background: linear-gradient(45deg, #00ffff, #ff00ff, #00ff00, #ffff00, #00ffff); }
+            100% { background: linear-gradient(45deg, #ffff00, #00ffff, #ff00ff, #00ff00, #ffff00); }
+        }
+
+        .score {
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #00ffff;
+            font-weight: 700;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        #gameCanvas {
+            border: 3px solid #00ffff;
+            background: #000011;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+            color: #00ffff;
+            font-weight: 400;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, rgba(0, 0, 0, 0.95), rgba(26, 0, 51, 0.95));
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #ff0044;
+            display: none;
+            box-shadow: 
+                0 0 30px rgba(255, 0, 68, 0.5),
+                inset 0 0 30px rgba(255, 0, 68, 0.1);
+        }
+
+        .game-over h2 {
+            color: #ff0044;
+            margin-bottom: 15px;
+            font-size: 2em;
+            text-shadow: 0 0 15px #ff0044;
+            animation: errorGlow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes errorGlow {
+            from { text-shadow: 0 0 15px #ff0044; }
+            to { text-shadow: 0 0 25px #ff0044, 0 0 35px #ff0044; }
+        }
+
+        button {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #0080ff, #00ffff);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Efectos de partículas en el fondo */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ffff;
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ CYBER SNAKE ⚡</h1>
+    
+    <div class="game-container">
+        <div class="score">Puntuación: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            <p>🎮 Usa las flechas del teclado para controlar la serpiente cibernética</p>
+            <button onclick="startGame()">🚀 INICIAR MISIÓN</button>
+            <button onclick="resetGame()">🔄 REINICIAR SISTEMA</button>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>💥 SISTEMA FALLIDO 💥</h2>
+        <p>Energía recolectada: <span id="finalScore">0</span> unidades</p>
+        <button onclick="resetGame()">🔄 REINICIAR MISIÓN</button>
+    </div>
+
+    <script>
+        // Configuración del juego
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverElement = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+
+        // Variables del juego
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [
+            {x: 10, y: 10}
+        ];
+        let food = {};
+        let dx = 1; // Iniciar moviéndose hacia la derecha
+        let dy = 0;
+        let score = 0;
+        let gameRunning = false;
+
+        // Inicializar juego
+        function init() {
+            generateFood();
+            draw();
+            document.addEventListener('keydown', changeDirection);
+        }
+
+        // Generar comida
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            
+            // Asegurar que la comida no aparezca en la serpiente
+            for (let segment of snake) {
+                if (segment.x === food.x && segment.y === food.y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+
+        // Cambiar dirección
+        function changeDirection(event) {
+            if (!gameRunning) return;
+
+            const keyPressed = event.keyCode;
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingRight = dx === 1;
+            const goingLeft = dx === -1;
+
+            if (keyPressed === 37 && !goingRight) { // Flecha izquierda
+                dx = -1;
+                dy = 0;
+            }
+            if (keyPressed === 38 && !goingDown) { // Flecha arriba
+                dx = 0;
+                dy = -1;
+            }
+            if (keyPressed === 39 && !goingLeft) { // Flecha derecha
+                dx = 1;
+                dy = 0;
+            }
+            if (keyPressed === 40 && !goingUp) { // Flecha abajo
+                dx = 0;
+                dy = 1;
+            }
+        }
+
+        // Mover serpiente
+        function moveSnake() {
+            if (!gameRunning) return;
+
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+            // Agregar posición anterior al rastro
+            trail.unshift({x: snake[0].x, y: snake[0].y});
+            if (trail.length > 10) {
+                trail.pop();
+            }
+
+            // Verificar colisiones con paredes
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver();
+                return;
+            }
+
+            // Verificar colisión consigo misma (solo con el cuerpo, no con la cabeza)
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Verificar si comió comida
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.textContent = score;
+                generateFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        // Variables para efectos visuales
+        let trail = []; // Rastro de la serpiente
+        let energyPulse = 0; // Pulsación de la comida
+        let time = 0; // Tiempo para animaciones
+
+        // Dibujar juego
+        function draw() {
+            time += 0.1;
+            
+            // Limpiar canvas con efecto de circuito
+            drawCircuitBackground();
+            
+            // Dibujar rastro de la serpiente
+            drawSnakeTrail();
+            
+            // Dibujar serpiente cibernética
+            drawCyberSnake();
+            
+            // Dibujar orbe de energía
+            drawEnergyOrb();
+        }
+
+        // Dibujar fondo estilo circuito
+        function drawCircuitBackground() {
+            // Fondo oscuro con gradiente
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#000011');
+            gradient.addColorStop(0.5, '#001122');
+            gradient.addColorStop(1, '#000011');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Líneas de circuito
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+        }
+
+        // Dibujar rastro de la serpiente
+        function drawSnakeTrail() {
+            if (trail.length > 0) {
+                for (let i = 0; i < trail.length; i++) {
+                    const alpha = (trail.length - i) / trail.length;
+                    const size = gridSize * alpha * 0.8;
+                    const x = trail[i].x * gridSize + (gridSize - size) / 2;
+                    const y = trail[i].y * gridSize + (gridSize - size) / 2;
+                    
+                    // Efecto de resplandor
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 20 * alpha;
+                    ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.3})`;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+        }
+
+        // Dibujar serpiente cibernética
+        function drawCyberSnake() {
+            for (let i = 0; i < snake.length; i++) {
+                const x = snake[i].x * gridSize;
+                const y = snake[i].y * gridSize;
+                const size = gridSize - 2;
+                
+                // Efecto de cristal/cyber
+                if (i === 0) {
+                    // Cabeza con efecto especial
+                    drawCyberHead(x, y, size);
+                } else {
+                    // Cuerpo cibernético
+                    drawCyberBody(x, y, size, i);
+                }
+            }
+        }
+
+        // Dibujar cabeza cibernética
+        function drawCyberHead(x, y, size) {
+            // Resplandor exterior
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 25;
+            
+            // Gradiente para la cabeza
+            const gradient = ctx.createRadialGradient(
+                x + size/2, y + size/2, 0,
+                x + size/2, y + size/2, size/2
+            );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.3, '#00ffff');
+            gradient.addColorStop(0.7, '#0080ff');
+            gradient.addColorStop(1, '#004080');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, size, size);
+            
+            // Borde brillante
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, size, size);
+            
+            // Ojos cibernéticos
+            ctx.fillStyle = '#ff0044';
+            ctx.shadowColor = '#ff0044';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(x + 4, y + 4, 4, 4);
+            ctx.fillRect(x + size - 8, y + 4, 4, 4);
+        }
+
+        // Dibujar cuerpo cibernético
+        function drawCyberBody(x, y, size, index) {
+            // Efecto de pulsación
+            const pulse = Math.sin(time * 5 + index) * 0.1 + 0.9;
+            const currentSize = size * pulse;
+            const offset = (size - currentSize) / 2;
+            
+            // Resplandor
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 15;
+            
+            // Gradiente para el cuerpo
+            const gradient = ctx.createRadialGradient(
+                x + size/2, y + size/2, 0,
+                x + size/2, y + size/2, currentSize/2
+            );
+            gradient.addColorStop(0, '#00ffff');
+            gradient.addColorStop(0.5, '#0080ff');
+            gradient.addColorStop(1, '#004080');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x + offset, y + offset, currentSize, currentSize);
+            
+            // Borde
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + offset, y + offset, currentSize, currentSize);
+        }
+
+        // Dibujar orbe de energía
+        function drawEnergyOrb() {
+            const x = food.x * gridSize;
+            const y = food.y * gridSize;
+            const size = gridSize - 2;
+            
+            // Pulsación de energía
+            energyPulse += 0.2;
+            const pulseSize = size * (0.8 + 0.2 * Math.sin(energyPulse));
+            const offset = (size - pulseSize) / 2;
+            
+            // Múltiples capas de resplandor
+            for (let i = 3; i >= 0; i--) {
+                const layerSize = pulseSize + i * 8;
+                const layerOffset = (size - layerSize) / 2;
+                const alpha = 0.1 - i * 0.02;
+                
+                ctx.shadowColor = '#ff0044';
+                ctx.shadowBlur = 20 + i * 10;
+                
+                // Gradiente radial para el orbe
+                const gradient = ctx.createRadialGradient(
+                    x + size/2, y + size/2, 0,
+                    x + size/2, y + size/2, layerSize/2
+                );
+                gradient.addColorStop(0, `rgba(255, 0, 68, ${alpha})`);
+                gradient.addColorStop(0.5, `rgba(255, 0, 136, ${alpha * 0.5})`);
+                gradient.addColorStop(1, `rgba(255, 0, 68, 0)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x + layerOffset, y + layerOffset, layerSize, layerSize);
+            }
+            
+            // Núcleo del orbe
+            ctx.shadowBlur = 0;
+            const coreGradient = ctx.createRadialGradient(
+                x + size/2, y + size/2, 0,
+                x + size/2, y + size/2, pulseSize/2
+            );
+            coreGradient.addColorStop(0, '#ffffff');
+            coreGradient.addColorStop(0.3, '#ff0044');
+            coreGradient.addColorStop(0.7, '#cc0033');
+            coreGradient.addColorStop(1, '#800022');
+            
+            ctx.fillStyle = coreGradient;
+            ctx.fillRect(x + offset, y + offset, pulseSize, pulseSize);
+            
+            // Borde brillante
+            ctx.strokeStyle = '#ff0044';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + offset, y + offset, pulseSize, pulseSize);
+        }
+
+        // Iniciar juego
+        function startGame() {
+            if (gameRunning) return;
+            
+            gameRunning = true;
+            gameOverElement.style.display = 'none';
+            gameLoop();
+        }
+
+        // Bucle del juego
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            moveSnake();
+            draw();
+            
+            setTimeout(gameLoop, 150); // Velocidad del juego
+        }
+
+        // Terminar juego
+        function gameOver() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverElement.style.display = 'block';
+        }
+
+        // Reiniciar juego
+        function resetGame() {
+            gameRunning = false;
+            snake = [{x: 10, y: 10}];
+            dx = 1; // Reiniciar moviéndose hacia la derecha
+            dy = 0;
+            score = 0;
+            scoreElement.textContent = score;
+            gameOverElement.style.display = 'none';
+            trail = []; // Limpiar rastro
+            energyPulse = 0; // Resetear pulsación
+            time = 0; // Resetear tiempo
+            generateFood();
+            draw();
+        }
+
+        // Inicializar cuando se carga la página
+        init();
+    </script>
+</body>
+</html>
